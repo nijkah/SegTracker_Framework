@@ -23,15 +23,16 @@ from evaluation.evaluate import test_model
 from tools.utils import vis
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-davis_path = '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+#davis_path = '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
 davis_im_path = os.path.join(davis_path, 'JPEGImages/480p')
 davis_gt_path = os.path.join(davis_path, 'Annotations/480p')
-vos_path = '/home/hakjine/datasets/Youtube-VOS/train/'
+#vos_path = '/home/hakjine/datasets/Youtube-VOS/train/'
 vos_im_path  = os.path.join(vos_path, 'JPEGImages')
 vos_gt_path  = os.path.join(vos_path, 'Annotations')
 #ECSSD_path = '../data/ECSSD'
-ECSSD_path= '/home/hakjine/datasets/ECSSD/'
-MSRA10K_path = '/home/hakjine/datasets/MSRA10K/'
+ECSSD_path= '/data/hakjin-workspace/datasets/ECSSD/'
+MSRA10K_path = '/data/hakjin-workspace/datasets/MSRA10K/'
 #MSRA10K_path = '../data/MSRA10K'
 
 start = timeit.timeit()
@@ -139,10 +140,11 @@ model.cuda()
 
 
 db_davis_train = DAVIS2016(train=True,root=davis_path, aug=True)
-db_ytb_train = YTB_VOS(train=True, root='/home/hakjine/datasets/Youtube-VOS', aug=True)
+#db_ytb_train = YTB_VOS(train=True, root='/home/hakjine/datasets/Youtube-VOS', aug=True)
 db_ECSSD = ECSSD(root=ECSSD_path, aug=True)
 db_MSRA10K = MSRA10K(root=MSRA10K_path, aug=True)
 db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
+db_train = ConcatDataset([db_davis_train, db_ECSSD, db_MSRA10K])
 
 train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)
 
