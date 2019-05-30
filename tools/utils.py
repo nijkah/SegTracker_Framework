@@ -218,7 +218,7 @@ def restore_mask(mask, bb, shape):
     reresized_mask = cv2.resize(unpadded_mask.astype('uint8'), (direct_w, direct_h), cv2.INTER_NEAREST)
 
     context = (bb[2]+bb[3])//4
-    restored_mask = np.zeros([shape[0], shape[1]], 2)
+    restored_mask = np.zeros([shape[0], shape[1], 2])
     pads = compute_padding(direct_coordinate,(o_w,o_h))
     restored_mask[cropped_up:cropped_bottom, cropped_left:cropped_right, :] = \
         reresized_mask[pads[0][0]:direct_h-pads[0][1]+1,pads[1][0]:direct_w-pads[1][1]+1, :]

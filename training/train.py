@@ -28,11 +28,11 @@ davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
 davis_im_path = os.path.join(davis_path, 'JPEGImages/480p')
 davis_gt_path = os.path.join(davis_path, 'Annotations/480p')
 #vos_path = '/home/hakjine/datasets/Youtube-VOS/train/'
-vos_im_path  = os.path.join(vos_path, 'JPEGImages')
-vos_gt_path  = os.path.join(vos_path, 'Annotations')
+#vos_im_path  = os.path.join(vos_path, 'JPEGImages')
+#vos_gt_path  = os.path.join(vos_path, 'Annotations')
 #ECSSD_path = '../data/ECSSD'
-ECSSD_path= '/data/hakjin-workspace/datasets/ECSSD/'
-MSRA10K_path = '/data/hakjin-workspace/datasets/MSRA10K/'
+ECSSD_path= '/data/hakjin-workspace/ECSSD/'
+MSRA10K_path = '/data/hakjin-workspace/MSRA10K/'
 #MSRA10K_path = '../data/MSRA10K'
 
 start = timeit.timeit()
@@ -55,7 +55,8 @@ print(args)
 
 gpu_num = int(args['--gpu'])
 num_labels = int(args['--NoLabels'])
-torch.cuda.set_device(gpu_num)
+#torch.cuda.set_device(gpu_num)
+os.environ['CUDA_VISIBLE_DEVICES']=str(gpu_num)
 
 
 def lr_poly(base_lr, iter,max_iter,power):
@@ -110,7 +111,8 @@ if not os.path.exists('../data/snapshots'):
 model = deeplab_resnet.Res_Deeplab_4chan(num_labels)
 
 #saved_state_dict = torch.load('data/MS_DeepLab_resnet_pretrained_COCO_init.pth')
-saved_state_dict = torch.load('../data/MS_DeepLab_resnet_trained_VOC.pth')
+#saved_state_dict = torch.load('../data/MS_DeepLab_resnet_trained_VOC.pth')
+saved_state_dict = torch.load('/data/hakjin-workspace/MS_DeepLab_resnet_trained_VOC.pth')
 for i in saved_state_dict:
     i_parts = i.split('.')
     #if i_parts[1]=='layer5':
@@ -143,7 +145,7 @@ db_davis_train = DAVIS2016(train=True,root=davis_path, aug=True)
 #db_ytb_train = YTB_VOS(train=True, root='/home/hakjine/datasets/Youtube-VOS', aug=True)
 db_ECSSD = ECSSD(root=ECSSD_path, aug=True)
 db_MSRA10K = MSRA10K(root=MSRA10K_path, aug=True)
-db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
+#db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
 db_train = ConcatDataset([db_davis_train, db_ECSSD, db_MSRA10K])
 
 train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)
@@ -174,8 +176,8 @@ for epoch in range(0, 20):
             print('iter = ',iter, 'of',max_iter,'completed, loss = ', (loss.data.cpu().numpy()))
 
     
-        if iter % 5 == 0:
-            vis(images[0], mask[0], label[0], out[0])
+        #if iter % 5 == 0:
+        #    vis(images[0], mask[0], label[0], out[0])
 
         optimizer.step()
         if iter == 1:
@@ -186,6 +188,7 @@ for epoch in range(0, 20):
         optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params': get_10x_lr_params(model), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
         #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = lr_, momentum = 0.9,weight_decay = weight_decay)
         optimizer.zero_grad()
+        iou = test_model(model, save=True)
 
         if iter == 10000:
             lr_ *= 10

@@ -20,7 +20,7 @@ from tools.utils import *
 import json
 from collections import OrderedDict
 
-davis_path = '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
 im_path = os.path.join(davis_path, 'JPEGImages/480p')
 gt_path = os.path.join(davis_path, 'Annotations/480p')
 
@@ -110,8 +110,8 @@ def test_model(model, vis=False, save=True):
             #bb = list(cv2.boundingRect(gt_original.astype('uint8')))
             #pred = crop_and_padding(gt_original, previous, (dim, dim))
             #pred = crop_and_padding(gt_original, gt_original, (dim, dim))
-            pred = restore_mask(pred_c, bb, img_original.shape).astype('uint8')
-            pred = np.argmax(pred, 2)
+            pred = restore_mask(pred_c, bb, img_original.shape)
+            pred = np.argmax(pred, 2).astype('uint8')
                         
             plt.ion()
             if vis:

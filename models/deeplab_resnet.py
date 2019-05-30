@@ -266,10 +266,10 @@ class MS_Deeplab_ms(nn.Module):
         self.aspp = build_aspp(output_stride=16)
 
         self.branch = nn.Sequential(
-            nn.Conv2d(2048, 4096, kernel_size=3, padding=1),
-            nn.BatchNorm2d(4096),
+            nn.Conv2d(2048, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Conv2d(4096, 512, kernel_size=1),
+            nn.Conv2d(128, 512, kernel_size=1),
             nn.BatchNorm2d(512),
             nn.ReLU())
         
