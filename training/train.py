@@ -28,8 +28,9 @@ davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
 davis_im_path = os.path.join(davis_path, 'JPEGImages/480p')
 davis_gt_path = os.path.join(davis_path, 'Annotations/480p')
 #vos_path = '/home/hakjine/datasets/Youtube-VOS/train/'
-#vos_im_path  = os.path.join(vos_path, 'JPEGImages')
-#vos_gt_path  = os.path.join(vos_path, 'Annotations')
+vos_path = '/data/hakjin-workspace/Youtube-VOS/'
+vos_im_path  = os.path.join(vos_path, 'JPEGImages')
+vos_gt_path  = os.path.join(vos_path, 'Annotations')
 #ECSSD_path = '../data/ECSSD'
 ECSSD_path= '/data/hakjin-workspace/ECSSD/'
 MSRA10K_path = '/data/hakjin-workspace/MSRA10K/'
@@ -44,7 +45,7 @@ Usage:
 Options:
     --NoLabels=<int>            The number of labels in training data, foreground and background  [default: 2]
     --lr=<float>                Learning Rate [default: 0.001]
-    -b, --batchSize=<int>       Num sample per batch [default: 8]
+    -b, --batchSize=<int>       Num sample per batch [default: 10]
     --wtDecay=<float>           Weight decay during training [default: 0.0005]
     --gpu=<int>                 GPU number [default: 0]
     --maxIter=<int>             Maximum number of iterations [default: 30000]
@@ -142,11 +143,10 @@ model.cuda()
 
 
 db_davis_train = DAVIS2016(train=True,root=davis_path, aug=True)
-#db_ytb_train = YTB_VOS(train=True, root='/home/hakjine/datasets/Youtube-VOS', aug=True)
+db_ytb_train = YTB_VOS(train=True, root=vos_path, aug=True)
 db_ECSSD = ECSSD(root=ECSSD_path, aug=True)
 db_MSRA10K = MSRA10K(root=MSRA10K_path, aug=True)
-#db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
-db_train = ConcatDataset([db_davis_train, db_ECSSD, db_MSRA10K])
+db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
 
 train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)
 
@@ -160,6 +160,9 @@ acc = []
 numerics = {'loss':losses, 'acc': acc}
 import json
 iter = 0
+save_path = '../data/snapshots'
+if not os.path.isdir(save_path):
+    os.makedirs(save_path)
 for epoch in range(0, 20):
     for ii, sample in enumerate(train_loader):
         iter += 1
@@ -180,15 +183,11 @@ for epoch in range(0, 20):
         #    vis(images[0], mask[0], label[0], out[0])
 
         optimizer.step()
-        if iter == 1:
-            lr_ = base_lr
-        if iter % 10 == 0:
-            lr_ = lr_poly(base_lr,iter,max_iter,0.9)
+        lr_ = lr_poly(base_lr,iter,max_iter,0.9)
         print('(poly lr policy) learning rate',lr_)
         optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params': get_10x_lr_params(model), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
         #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = lr_, momentum = 0.9,weight_decay = weight_decay)
         optimizer.zero_grad()
-        iou = test_model(model, save=True)
 
         if iter == 10000:
             lr_ *= 10

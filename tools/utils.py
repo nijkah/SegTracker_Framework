@@ -214,14 +214,16 @@ def restore_mask(mask, bb, shape):
     
     pads = ( ((m_h-cc_h+1)//2, (m_h-cc_h)//2), ((m_w-cc_w+1)//2, (m_w-cc_w)//2))
 
-    unpadded_mask = mask[pads[0][0]:pads[0][0]+cc_h, pads[1][0]:pads[1][0]+cc_w, :]
-    reresized_mask = cv2.resize(unpadded_mask.astype('uint8'), (direct_w, direct_h), cv2.INTER_NEAREST)
+    unpadded_mask = mask[pads[0][0]:pads[0][0]+cc_h, pads[1][0]:pads[1][0]+cc_w]
+    #reresized_mask = cv2.resize(unpadded_mask.astype('uint8'), (direct_w, direct_h), cv2.INTER_NEAREST)
+    reresized_mask = cv2.resize(unpadded_mask, (direct_w, direct_h))
 
     context = (bb[2]+bb[3])//4
     restored_mask = np.zeros([shape[0], shape[1], 2])
+    restored_mask[:, :, 0] = 1
     pads = compute_padding(direct_coordinate,(o_w,o_h))
-    restored_mask[cropped_up:cropped_bottom, cropped_left:cropped_right, :] = \
-        reresized_mask[pads[0][0]:direct_h-pads[0][1]+1,pads[1][0]:direct_w-pads[1][1]+1, :]
+    restored_mask[cropped_up:cropped_bottom, cropped_left:cropped_right] = \
+        reresized_mask[pads[0][0]:direct_h-pads[0][1]+1,pads[1][0]:direct_w-pads[1][1]+1]
     ####
     """
     fit_to_w = w > h

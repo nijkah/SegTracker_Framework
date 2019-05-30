@@ -74,17 +74,18 @@ def test_model(model, vis=False, save=True):
 
             if idx == 0:
                 bb = cv2.boundingRect(gt_original)
-                if bb is not None:
-                    template = crop_and_padding(img_temp, gt_original, (dim//2, dim//2))
-                    fg = crop_and_padding(gt_original, gt_original, (dim//2, dim//2))
-                    bb = cv2.boundingRect(fg)
-                    fg = np.zeros([dim//2, dim//2, 1])
-                    if bb is not None:
-                        fg[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 100 / 255.
-                        fg[fg==0] = -100/255.
-                        template = np.expand_dims(np.dstack([template, fg]), 0).transpose(0,3,1,2)
-                        template = torch.FloatTensor(template).cuda(gpu0)
-                previous = gt_original.copy()
+                #if bb is not None:
+                    #template = crop_and_padding(img_temp, gt_original, (dim//2, dim//2))
+                    #fg = crop_and_padding(gt_original, gt_original, (dim//2, dim//2))
+                    #bb = cv2.boundingRect(fg)
+                    #fg = np.zeros([dim//2, dim//2, 1])
+                    #if bb is not None:
+                    #    fg[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 100 / 255.
+                    #    fg[fg==0] = -100/255.
+                    #    template = np.expand_dims(np.dstack([template, fg]), 0).transpose(0,3,1,2)
+                    #    template = torch.FloatTensor(template).cuda(gpu0)
+                previous = np.zeros(gt_original.shape)
+                previous[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1]=1
 
             search_region = crop_and_padding(img_temp, previous, (dim, dim))
             mask = crop_and_padding(previous, previous, (dim, dim))
@@ -103,7 +104,7 @@ def test_model(model, vis=False, save=True):
             #pred_c = scipy.misc.imresize(pred_c.astype('uint8').squeeze(), (321, 321))
             #print(output.shape)
             #pred_c = F.upsample(output, scale_factor=2).data.cpu().numpy()
-            pred_c = F.interpolate(output, size=(321,321)).data.cpu().numpy()
+            pred_c = F.interpolate(output, size=(321,321), mode='bilinear').data.cpu().numpy()
             pred_c = pred_c.squeeze(0).transpose(1,2,0)
 
             bb = list(cv2.boundingRect(previous.astype('uint8')))
