@@ -105,13 +105,13 @@ def test_model(model, vis=False, save=True):
             #pred_c = F.upsample(output, scale_factor=2).data.cpu().numpy()
             pred_c = F.interpolate(output, size=(321,321)).data.cpu().numpy()
             pred_c = pred_c.squeeze(0).transpose(1,2,0)
-            pred_c = np.argmax(pred_c,axis = 2)
 
             bb = list(cv2.boundingRect(previous.astype('uint8')))
             #bb = list(cv2.boundingRect(gt_original.astype('uint8')))
             #pred = crop_and_padding(gt_original, previous, (dim, dim))
             #pred = crop_and_padding(gt_original, gt_original, (dim, dim))
             pred = restore_mask(pred_c, bb, img_original.shape).astype('uint8')
+            pred = np.argmax(pred, 2)
                         
             plt.ion()
             if vis:
