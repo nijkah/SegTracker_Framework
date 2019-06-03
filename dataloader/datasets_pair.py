@@ -8,7 +8,7 @@ import numpy as np
 from glob import glob
 from scipy.misc import imread, imresize, imsave
 import cv2
-from custom_transforms import aug_pair, aug_mask, aug_mask_nodeform
+from .custom_transforms import aug_pair, aug_mask, aug_mask_nodeform
 from PIL import Image
 import matplotlib.pyplot as plt
 
@@ -79,19 +79,24 @@ class DAVIS(data.Dataset):
         mask[mask==255] = 1
         
         if self.aug:
-            #img, target, gt = aug_pair(img_template, img_search, gt_template, gt_search) 
-            img, target, gt = aug_mask(img_template, img_search, gt_template, gt_search, mask)
+            img, mask, target, box, gt = aug_pair(img_template, img_search, gt_template, gt_search)
+            #img, target, gt = aug_mask(img_template, img_search, gt_template, gt_search, mask)
             
         # hwc
+
         img = img.transpose(2, 0, 1)
+        mask = mask.transpose(2, 0, 1)
         target = target.transpose(2, 0, 1)
+        box = box.transpose(2, 0, 1)
         gt = gt.transpose(2, 0, 1)
 
         img = torch.from_numpy(img.astype(np.float32))
+        mask = torch.from_numpy(mask.astype(np.float32))
         target = torch.from_numpy(target.astype(np.float32))
+        box = torch.from_numpy(box.astype(np.float32))
         gt = torch.from_numpy(gt.astype(np.float32))
 
-        return img, target, gt
+        return img, mask, target, box, gt
 
     def __len__(self):
         return self.size * self.replicates
@@ -193,18 +198,22 @@ class YTB_VOS(data.Dataset):
                 continue
 
         if self.aug:
-            img, target, gt = aug_pair(img_template, img_search, gt_template, gt_search)
+            img, mask, target, box, gt = aug_pair(img_template, img_search, gt_template, gt_search)
             #img, target, gt = aug_mask(img_template, img_search, gt_template, gt_search, mask)
 
         img = img.transpose(2, 0, 1)
+        mask = mask.transpose(2, 0, 1)
         target = target.transpose(2, 0, 1)
+        box = box.transpose(2, 0, 1)
         gt = gt.transpose(2, 0, 1)
 
         img = torch.from_numpy(img.astype(np.float32))
+        mask = torch.from_numpy(mask.astype(np.float32))
         target = torch.from_numpy(target.astype(np.float32))
+        box = torch.from_numpy(box.astype(np.float32))
         gt = torch.from_numpy(gt.astype(np.float32))
 
-        return img, target, gt
+        return img, mask, target, box, gt
 
     def __len__(self):
         return self.size * self.replicates
@@ -260,18 +269,21 @@ class ECSSD_dreaming(data.Dataset):
 
 
         if self.aug:
-            img, target, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
+            img, mask, target, box, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
             
         img = img.transpose(2, 0, 1)
+        mask = mask.transpose(2, 0, 1)
         target = target.transpose(2, 0, 1)
+        box = box.transpose(2, 0, 1)
         gt = gt.transpose(2, 0, 1)
 
         img = torch.from_numpy(img.astype(np.float32))
+        mask = torch.from_numpy(mask.astype(np.float32))
         target = torch.from_numpy(target.astype(np.float32))
+        box = torch.from_numpy(box.astype(np.float32))
         gt = torch.from_numpy(gt.astype(np.float32))
 
-
-        return img, target, gt
+        return img, mask, target, box, gt
 
     def __len__(self):
         return self.size * self.replicates
@@ -328,20 +340,22 @@ class MSRA10K_dreaming(data.Dataset):
 
 
         if self.aug:
-            img, target, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
+            img, mask, target, box, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
 
-                    
         img = img.transpose(2, 0, 1)
+        mask = mask.transpose(2, 0, 1)
         target = target.transpose(2, 0, 1)
+        box = box.transpose(2, 0, 1)
         gt = gt.transpose(2, 0, 1)
 
         img = torch.from_numpy(img.astype(np.float32))
+        mask = torch.from_numpy(mask.astype(np.float32))
         target = torch.from_numpy(target.astype(np.float32))
+        box = torch.from_numpy(box.astype(np.float32))
         gt = torch.from_numpy(gt.astype(np.float32))
 
-
-        return img, target, gt
-
+        return img, mask, target, box, gt
+        
     def __len__(self):
         return self.size * self.replicates
 
