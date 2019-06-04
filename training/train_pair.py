@@ -23,15 +23,15 @@ from evaluation.test_pair import test_model
 from tools.utils import vis_2
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-davis_path = '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
 davis_im_path = os.path.join(davis_path, 'JPEGImages/480p')
 davis_gt_path = os.path.join(davis_path, 'Annotations/480p')
-vos_path = '/home/hakjine/datasets/Youtube-VOS/train/'
+vos_path = '/data/hakjin-workspace/Youtube-VOS/'
 vos_im_path  = os.path.join(vos_path, 'JPEGImages')
 vos_gt_path  = os.path.join(vos_path, 'Annotations')
 #ECSSD_path = '../data/ECSSD'
-ECSSD_path= '/home/hakjine/datasets/ECSSD/'
-MSRA10K_path = '/home/hakjine/datasets/MSRA10K/'
+ECSSD_path= '/data/hakjin-workspace/ECSSD/'
+MSRA10K_path = '/data/hakjin-workspace/MSRA10K/'
 #MSRA10K_path = '../data/MSRA10K'
 
 start = timeit.timeit()
@@ -45,7 +45,7 @@ Options:
     --lr=<float>                Learning Rate [default: 0.001]
     -b, --batchSize=<int>       Num sample per batch [default: 5]
     --wtDecay=<float>           Weight decay during training [default: 0.0005]
-    --gpu=<int>                 GPU number [default: 0]
+    --gpu=<int>                 GPU number [default: 4]
     --maxIter=<int>             Maximum number of iterations [default: 30000]
 """
 
@@ -54,7 +54,7 @@ print(args)
 
 gpu_num = int(args['--gpu'])
 num_labels = int(args['--NoLabels'])
-torch.cuda.set_device(gpu_num)
+os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_num)
 
 
 def lr_poly(base_lr, iter,max_iter,power):
@@ -93,8 +93,12 @@ def get_10x_lr_params(model):
     """
 
     b = []
+    b.append(model.aspp.parameters())
     b.append(model.branch.parameters())
     b.append(model.fuse.parameters())
+    b.append(model.template_refine.parameters())
+    b.append(model.template_fuse.parameters())
+    b.append(model.refine.parameters())
     b.append(model.predict.parameters())
 
     for j in range(len(b)):
@@ -109,7 +113,7 @@ if not os.path.exists('../data/snapshots'):
 model = deeplab_resnet_pair.Res_Deeplab_4chan(num_labels)
 
 #saved_state_dict = torch.load('data/MS_DeepLab_resnet_pretrained_COCO_init.pth')
-saved_state_dict = torch.load('../data/MS_DeepLab_resnet_trained_VOC.pth')
+saved_state_dict = torch.load('/data/hakjin-workspace/MS_DeepLab_resnet_trained_VOC.pth')
 for i in saved_state_dict:
     i_parts = i.split('.')
     #if i_parts[1]=='layer5':
@@ -139,7 +143,7 @@ model.cuda()
 
 
 db_davis_train = DAVIS2016(train=True,root=davis_path, aug=True)
-db_ytb_train = YTB_VOS(train=True, root='/home/hakjine/datasets/Youtube-VOS', aug=True)
+db_ytb_train = YTB_VOS(train=True, root=vos_path, aug=True)
 db_ECSSD = ECSSD_dreaming(root=ECSSD_path, aug=True)
 db_MSRA10K = MSRA10K_dreaming(root=MSRA10K_path, aug=True)
 db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
@@ -174,14 +178,11 @@ for epoch in range(0, 20):
             print('iter = ',iter, 'of',max_iter,'completed, loss = ', (loss.data.cpu().numpy()))
 
     
-        if iter % 5 == 0:
-            vis_2(images[0], mask[0], target[0], box[0], label[0], out[0])
+        #if iter % 5 == 0:
+        #    vis_2(images[0], mask[0], target[0], box[0], label[0], out[0])
 
         optimizer.step()
-        if iter == 1:
-            lr_ = base_lr
-        if iter % 10 == 0:
-            lr_ = lr_poly(base_lr,iter,max_iter,0.9)
+        lr_ = lr_poly(base_lr,iter,max_iter,0.9)
         print('(poly lr policy) learning rate',lr_)
         optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params': get_10x_lr_params(model), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
         #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = lr_, momentum = 0.9,weight_decay = weight_decay)
@@ -189,9 +190,11 @@ for epoch in range(0, 20):
 
         if iter == 10000:
             lr_ *= 10
+            base_lr *= 10
 
         if iter == 20000:
             lr_ *= 50
+            base_lr *= 50
 
         if iter % 1000 == 0 and iter!=0:
             print('taking snapshot ...')

@@ -281,8 +281,29 @@ class MS_Deeplab_ms(nn.Module):
             nn.BatchNorm2d(2048),
             nn.ReLU())
 
-        self.refine= nn.Sequential(
+        self.template_refine= nn.Sequential(
                 #nn.Conv2d(48+256, 256, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(2048, 256, kernel_size=7, stride=2, padding=3, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True), # change
+                nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU())
+
+        self.template_fuse = nn.Sequential(
+                nn.Conv2d(128+128, 256, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True), # change
+                nn.Conv2d(256, 2048, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(2048),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True))
+
+
+
+        self.refine= nn.Sequential(
                 nn.Conv2d(256+256, 256, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(256),
                 nn.ReLU(),
@@ -321,14 +342,18 @@ class MS_Deeplab_ms(nn.Module):
 
     def set_template(self, x, mask):
         x = (x - self.mean) / self.std
-        ll, low_level_feat, out,  = self.Scale(x)
+        ll, low_level_feat, out = self.Scale(x)
+        out = self.template_refine(out)
         mask = F.interpolate(mask, size=out.shape[2:])
+        branch = out * mask
+        out = torch.cat([out, branch], 1)
+        out = self.template_fuse(out)
 
-        branch_feature = self.branch(out)
-        mask_feature = branch_feature * mask
-        fused_feature = torch.cat([branch_feature, mask_feature], 1)
-        fused_feature = self.fuse(fused_feature)
-        out = out + fused_feature
+        #branch_feature = self.branch(out)
+        #mask_feature = branch_feature * mask
+        #fused_feature = torch.cat([branch_feature, mask_feature], 1)
+        #fused_feature = self.fuse(fused_feature)
+        #out = out + fused_feature
         template_feature = F.max_pool2d(out, kernel_size=out.shape[2:])
 
         return template_feature

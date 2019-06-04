@@ -20,7 +20,7 @@ from tools.utils import *
 import json
 from collections import OrderedDict
 
-davis_path = '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
 im_path = os.path.join(davis_path, 'JPEGImages/480p')
 gt_path = os.path.join(davis_path, 'Annotations/480p')
 
@@ -74,20 +74,20 @@ def test_model(model, vis=False, save=True):
 
             if idx == 0:
                 bb = cv2.boundingRect(gt_original)
+                template = crop_and_padding(img_temp, gt_original, (dim, dim))
+                fg = crop_and_padding(gt_original, gt_original, (dim, dim))
+                bb = cv2.boundingRect(fg)
+                box = np.zeros([dim, dim, 1])
                 if bb is not None:
-                    template = crop_and_padding(img_temp, gt_original, (dim, dim))
-                    fg = crop_and_padding(gt_original, gt_original, (dim, dim))
-                    bb = cv2.boundingRect(fg)
-                    box = np.zeros([dim, dim, 1])
-                    if bb is not None:
-                        box[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 1
-                        #fg[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 100 / 255.
-                        #fg[fg==0] = -100/255.
-                        template = np.expand_dims(template, 0).transpose(0,3,1,2)
-                        template = torch.FloatTensor(template).cuda(gpu0)
-                        box = np.expand_dims(box, 0).transpose(0,3,1,2)
-                        box = torch.FloatTensor(box).cuda(gpu0)
+                    box[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 1
+                    #fg[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 100 / 255.
+                    #fg[fg==0] = -100/255.
+                    template = np.expand_dims(template, 0).transpose(0,3,1,2)
+                    template = torch.FloatTensor(template).cuda(gpu0)
+                    box = np.expand_dims(box, 0).transpose(0,3,1,2)
+                    box = torch.FloatTensor(box).cuda(gpu0)
                 previous = gt_original.copy()
+                bb = cv2.boundingRect(previous)
                 previous = np.zeros(gt_original.shape).astype('uint8')
                 previous[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1]= 1
 
@@ -165,6 +165,7 @@ def test_model(model, vis=False, save=True):
         tiou += seq_iou/len(img_list)
     #miou = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
     #print 'pytorch',iter,"Mean iou = ",np.sum(miou)/len(miou)
+    print('total:', tiou/len(val_seqs))
     model.train()
     dumps['t mIoU'] = tiou/len(val_seqs)
     with open('dump_tempmod.json', 'w') as f:
