@@ -8,7 +8,7 @@ import numpy as np
 from glob import glob
 from scipy.misc import imread, imresize, imsave
 import cv2
-from .custom_transforms import aug_pair, aug_mask, aug_mask_nodeform
+from .custom_transforms_pair import aug_pair, aug_mask_nodeform
 from PIL import Image
 import matplotlib.pyplot as plt
 
@@ -157,7 +157,8 @@ class YTB_VOS(data.Dataset):
             candidates = index_list[i_index-1:i_index] + index_list[i_index+1:i_index+2]
             
             gt_template = np.expand_dims(np.array(Image.open(self.gt_list[index])), axis=3)
-            if len(np.unique(gt_template)) == 1:
+            bb = cv2.boundingRect(gt_template.squeeze())
+            if len(np.unique(gt_template)) == 1 or bb[2] < 20 or bb[3] <20:
                 index = random.choice(index_list)
                 continue
             for i in range(10):
@@ -172,8 +173,10 @@ class YTB_VOS(data.Dataset):
                     candidates.remove(mask_index)
                     continue
 
-
                 gt_search = np.expand_dims(np.array(Image.open(self.gt_list[search_index])), axis=3)
+                bb = cv2.boundingRect(gt_search.squeeze())
+                if bb[2] < 20 or bb[3] < 20:
+                    continue
                 labels_template = np.unique(gt_template).tolist()
                 labels_search = np.unique(gt_search).tolist()
                 labels_mask = np.unique(mask).tolist()
@@ -269,7 +272,8 @@ class ECSSD_dreaming(data.Dataset):
 
 
         if self.aug:
-            img, mask, target, box, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
+            img, mask, target, box, gt = aug_pair(img_template, img_search, gt_template, gt_search)
+            #img, mask, target, box, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
             
         img = img.transpose(2, 0, 1)
         mask = mask.transpose(2, 0, 1)
@@ -340,7 +344,8 @@ class MSRA10K_dreaming(data.Dataset):
 
 
         if self.aug:
-            img, mask, target, box, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
+            img, mask, target, box, gt = aug_pair(img_template, img_search, gt_template, gt_search)
+            #img, mask, target, box, gt = aug_mask_nodeform(img_template, img_search, gt_template, gt_search, mask)
 
         img = img.transpose(2, 0, 1)
         mask = mask.transpose(2, 0, 1)
