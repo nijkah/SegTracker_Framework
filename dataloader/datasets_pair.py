@@ -157,8 +157,7 @@ class YTB_VOS(data.Dataset):
             candidates = index_list[i_index-1:i_index] + index_list[i_index+1:i_index+2]
             
             gt_template = np.expand_dims(np.array(Image.open(self.gt_list[index])), axis=3)
-            bb = cv2.boundingRect(gt_template.squeeze())
-            if len(np.unique(gt_template)) == 1 or bb[2] < 20 or bb[3] <20:
+            if len(np.unique(gt_template)) == 1:
                 index = random.choice(index_list)
                 continue
             for i in range(10):
@@ -174,9 +173,6 @@ class YTB_VOS(data.Dataset):
                     continue
 
                 gt_search = np.expand_dims(np.array(Image.open(self.gt_list[search_index])), axis=3)
-                bb = cv2.boundingRect(gt_search.squeeze())
-                if bb[2] < 20 or bb[3] < 20:
-                    continue
                 labels_template = np.unique(gt_template).tolist()
                 labels_search = np.unique(gt_search).tolist()
                 labels_mask = np.unique(mask).tolist()
@@ -189,6 +185,10 @@ class YTB_VOS(data.Dataset):
                     gt_search[gt_search!=idx] = 0
                     gt_template[gt_template==idx] = 1
                     gt_search[gt_search==idx] = 1
+                    bb_template = cv2.boundingRect(gt_template.squeeze())
+                    bb_search = cv2.boundingRect(gt_search.squeeze())
+                    if bb_search[2] < 30 or bb_search[3] < 30 or bb_template[2] < 30 or bb_template[3] < 30:
+                        continue
                     mask[mask!=idx] = 0
                     mask[mask==idx] = 1
                     img_template  = cv2.imread(self.image_list[index])
