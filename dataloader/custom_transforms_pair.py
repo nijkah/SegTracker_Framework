@@ -137,7 +137,9 @@ def aug_pair(img_template, img_search, gt_template, gt_search):
 
         aug = np.expand_dims(cv2.dilate(mask, kernel, iterations=it), 2)
         fc[np.where(aug==1)] = 1
-        
+    else:
+        fc[:, :, 0] =mask 
+
     gt_search= np.expand_dims(gt_search, 2)
     gt = np.expand_dims(gt_search, 3)
     label = resize_label_batch(gt.astype(float), dim//2)
@@ -221,4 +223,5 @@ def aug_mask_nodeform(img_template, img_search, gt_template, gt_search, p_mask):
     label = resize_label_batch(gt_search, dim//2)
     label = label.squeeze(3)
 
-    return img_search, p_mask ,target, template_mask, label
+    return img_search, fc, template, template_mask, label
+

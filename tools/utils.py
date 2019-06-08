@@ -64,7 +64,7 @@ def vis(img, mask, gt, out, analysis=True):
     plt.pause(0.05)
     plt.clf()
 
-def vis_2(img, mask,target, gt, out, analysis=True):
+def vis_2(img, mask,target, box,gt, out, analysis=True):
     plt.ion()
     im = img.data.cpu().numpy().transpose(1, 2, 0)
     im *= 255
@@ -75,6 +75,10 @@ def vis_2(img, mask,target, gt, out, analysis=True):
 
     target_im= target.data.cpu().numpy().transpose(1, 2, 0)
     target_im *= 255
+    fg2 = box.data.cpu().numpy().transpose(1, 2, 0)
+    fg2[fg2>0] = 1
+    fg2[fg2!=1] = 0
+    target_im = overlay(target_im, fg2.squeeze())
 
     out = out.data.cpu().numpy()
     out = np.argmax(out, 0)
@@ -88,6 +92,8 @@ def vis_2(img, mask,target, gt, out, analysis=True):
     plt.imshow(im.astype('uint8'))
 
     gt_pred = np.zeros([shape[0], shape[1], 3])
+    gt= gt.data.cpu().numpy().transpose(1, 2, 0)
+    gt= cv2.resize(gt, (164, 164), cv2.INTER_NEAREST)
     gt_pred[:,:,0] = gt.squeeze() * 255
     gt_pred[:,:,2] = out * 255
     #plt.subplot(2, 3, 6).set_title('GT-pred')
@@ -104,7 +110,7 @@ def vis_2(img, mask,target, gt, out, analysis=True):
     plt.imshow(out)
 
     mask_pred = np.zeros([shape[0], shape[1], 3])
-    fg = cv2.resize(fg, (128, 128), cv2.INTER_NEAREST)
+    fg = cv2.resize(fg, (164, 164), cv2.INTER_NEAREST)
     mask_pred[:,:,0] = fg * 255
     mask_pred[:,:,2] = out * 255
     plt.subplot(2, 3, 3).set_title('Mask-pred')

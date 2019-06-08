@@ -292,16 +292,14 @@ class MS_Deeplab_ms(nn.Module):
                 nn.ReLU())
 
         self.template_fuse = nn.Sequential(
-                nn.Conv2d(128+128, 256, kernel_size=3, stride=2, padding=1, bias=False),
-                nn.BatchNorm2d(256),
+                nn.Conv2d(128+128, 512, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(512),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True), # change
-                nn.Conv2d(256, 2048, kernel_size=3, stride=2, padding=1, bias=False),
-                nn.BatchNorm2d(2048),
+                nn.Conv2d(512, 256, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(256),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True))
-
-
 
         self.refine= nn.Sequential(
                 nn.Conv2d(256+256, 256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -370,9 +368,9 @@ class MS_Deeplab_ms(nn.Module):
         fused_feature = torch.cat([branch_feature, mask_feature], 1)
         fused_feature = self.fuse(fused_feature)
         out = out + fused_feature
-        out = out * template_feature
 
         out = self.aspp(out)
+        out = out + template_feature
         #branch_feature = self.branch(low_level_feat)
         
         #mask = F.interpolate(mask, size=branch_feature.shape[2:])
