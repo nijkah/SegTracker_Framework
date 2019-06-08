@@ -23,15 +23,11 @@ from evaluation.test_pair import test_model
 from tools.utils import vis_2
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
-davis_im_path = os.path.join(davis_path, 'JPEGImages/480p')
-davis_gt_path = os.path.join(davis_path, 'Annotations/480p')
-vos_path = '/data/hakjin-workspace/Youtube-VOS/'
-vos_im_path  = os.path.join(vos_path, 'JPEGImages')
-vos_gt_path  = os.path.join(vos_path, 'Annotations')
+davis_path = '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+vos_path = '/home/hakjine/datasets/Youtube-VOS/'
 #ECSSD_path = '../data/ECSSD'
-ECSSD_path= '/data/hakjin-workspace/ECSSD/'
-MSRA10K_path = '/data/hakjin-workspace/MSRA10K/'
+ECSSD_path= '/home/hakjine/datasets/ECSSD/'
+MSRA10K_path = '/home/hakjine/datasets/MSRA10K/'
 #MSRA10K_path = '../data/MSRA10K'
 
 start = timeit.timeit()
@@ -45,7 +41,7 @@ Options:
     --lr=<float>                Learning Rate [default: 0.001]
     -b, --batchSize=<int>       Num sample per batch [default: 5]
     --wtDecay=<float>           Weight decay during training [default: 0.0005]
-    --gpu=<int>                 GPU number [default: 4]
+    --gpu=<int>                 GPU number [default: 0]
     --maxIter=<int>             Maximum number of iterations [default: 30000]
 """
 
@@ -113,7 +109,7 @@ if not os.path.exists('../data/snapshots'):
 model = deeplab_resnet_pair.Res_Deeplab_4chan(num_labels)
 
 #saved_state_dict = torch.load('data/MS_DeepLab_resnet_pretrained_COCO_init.pth')
-saved_state_dict = torch.load('/data/hakjin-workspace/MS_DeepLab_resnet_trained_VOC.pth')
+saved_state_dict = torch.load('../data/MS_DeepLab_resnet_trained_VOC.pth')
 for i in saved_state_dict:
     i_parts = i.split('.')
     #if i_parts[1]=='layer5':
@@ -178,8 +174,8 @@ for epoch in range(0, 20):
             print('iter = ',iter, 'of',max_iter,'completed, loss = ', (loss.data.cpu().numpy()))
 
     
-        #if iter % 5 == 0:
-        #    vis_2(images[0], mask[0], target[0], box[0], label[0], out[0])
+        if iter % 5 == 0:
+            vis_2(images[0], mask[0], target[0], box[0], label[0], out[0])
 
         optimizer.step()
         lr_ = lr_poly(base_lr,iter,max_iter,0.9)
