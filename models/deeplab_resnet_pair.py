@@ -266,7 +266,7 @@ class MS_Deeplab_ms(nn.Module):
         self.aspp = build_aspp(output_stride=16)
 
         self.conv_1x1 = nn.Sequential(
-            nn.Conv2d(2048, 1024, kernel_size=3, padding=1),
+            nn.Conv2d(2048, 1024, kernel_size=1),
             nn.BatchNorm2d(1024),
             nn.ReLU())
 
@@ -288,7 +288,7 @@ class MS_Deeplab_ms(nn.Module):
             nn.ReLU())
 
         self.fuse2 = nn.Sequential(
-            nn.Conv2d(512, 1024, kernel_size=3, padding=1),
+            nn.Conv2d(512, 1024, kernel_size=1),
             nn.BatchNorm2d(1024),
             nn.ReLU(),
             nn.Conv2d(1024, 2048, kernel_size=1),

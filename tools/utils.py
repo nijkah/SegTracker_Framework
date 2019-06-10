@@ -54,11 +54,15 @@ def get_10x_lr_params(model):
             yield i
 
 
-def overlay(img, mask, color=[255, 0, 0], transparency=0.6):
-    gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+def overlay(img, mask, color=[255, 0, 0], transparency=0.6, gray=True):
     im_over = np.zeros(img.shape)
-    for c in range(3):
-        im_over[:, :, c] = (1 - mask) * gray_img + mask * (color[c]*transparency + (1-transparency)*gray_img)
+    if gray:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        for c in range(3):
+            im_over[:, :, c] = (1 - mask) * img + mask * (color[c]*transparency + (1-transparency)*img)
+    else:
+        for c in range(3):
+            im_over[:, :, c] = (1 - mask) * img[:, :, c] + mask * (color[c]*transparency + (1-transparency)*img[:, :, c])
 
     im_over[im_over>255] = 255
     im_over[im_over<0] =0 
@@ -127,7 +131,7 @@ def vis_2(img, mask,target, box,gt, out, analysis=True):
     fg2 = box.data.cpu().numpy().transpose(1, 2, 0)
     fg2[fg2>0] = 1
     fg2[fg2!=1] = 0
-    target_im = overlay(target_im, fg2.squeeze())
+    target_im = overlay(target_im, fg2.squeeze(), gray=False)
 
     out = out.data.cpu().numpy()
     out = np.argmax(out, 0)
