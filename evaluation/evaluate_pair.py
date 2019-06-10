@@ -1,56 +1,30 @@
-import scipy.misc
 import cv2
 import numpy as np
-import sys
-sys.path.append('..')
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from models import deeplab_resnet 
 from collections import OrderedDict
 import os
-import matplotlib.pyplot as plt
+import sys
+import json
+sys.path.append('..')
 
-from docopt import docopt
-#from dataloader.datasets import DAVIS2016
+from models import deeplab_resnet_pair
 from tools.utils import *
 
-import json
-from collections import OrderedDict
-
-davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
-im_path = os.path.join(davis_path, 'JPEGImages/480p')
-gt_path = os.path.join(davis_path, 'Annotations/480p')
-
-
-docstr = """Evaluate ResNet-DeepLab trained on scenes (VOC 2012),a total of 21 labels including background
-
-Usage: 
-    evalpyt.py [options]
-
-Options:
-    -h, --help                  Print this message
-    --visualize                 view outputs of each sketch
-    --snapPrefix=<str>          Snapshot [default: VOC12_scenes_]
-    --testGTpath=<str>          Ground truth path prefix [default: data/gt/]
-    --testIMpath=<str>          Sketch images path prefix [default: data/img/]
-    --NoLabels=<int>            The number of different labels in training data, VOC has 21 labels, including background [default: 21]
-    --gpu0=<int>                GPU number [default: 0]
-"""
-
-args = docopt(docstr, version='v0.1')
-#print args
-gpu0 = 0
-
-max_label = int(args['--NoLabels'])-1 # labels from 0,1, ... 20(for VOC) 
+DAVIS_PATH= '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
+im_path = os.path.join(DAVIS_PATH, 'JPEGImages/480p')
+gt_path = os.path.join(DAVIS_PATH, 'Annotations/480p')
+SAVED_DICT_PATH = ''
 
 
 def test_model(model, vis=False, save=True):
     dim = 328
     model.eval()
-    val_seqs = np.loadtxt(os.path.join(davis_path, 'val_seqs.txt'), dtype=str).tolist()
+    val_seqs = np.loadtxt(os.path.join(DAVIS_PATH, 'val_seqs.txt'), dtype=str).tolist()
     dumps = OrderedDict()
     #val_seqs = np.loadtxt(os.path.join(davis_path, 'train_seqs.txt'), dtype=str).tolist()
 
@@ -83,9 +57,9 @@ def test_model(model, vis=False, save=True):
                     #fg[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 100 / 255.
                     #fg[fg==0] = -100/255.
                     template = np.expand_dims(template, 0).transpose(0,3,1,2)
-                    template = torch.FloatTensor(template).cuda(gpu0)
+                    template = torch.FloatTensor(template).cuda()
                     box = np.expand_dims(box, 0).transpose(0,3,1,2)
-                    box = torch.FloatTensor(box).cuda(gpu0)
+                    box = torch.FloatTensor(box).cuda()
                 previous = gt_original.copy()
                 bb = cv2.boundingRect(previous)
                 previous = np.zeros(gt_original.shape).astype('uint8')
@@ -156,8 +130,7 @@ def test_model(model, vis=False, save=True):
                 folder = os.path.join(save_path, i.split('/')[0])
                 if not os.path.isdir(folder):
                     os.makedirs(folder)
-                #Image.fromarray(output.astype(int)).save(os.path.join('Results', i+'.png'))
-                scipy.misc.imsave(os.path.join(save_path, i+'.png'),previous*255)
+                cv2.imwrite(os.path.join(save_path, i+'.png'),previous*255)
             seq_iou += iou
 
         print(seq, seq_iou/len(img_list))
@@ -174,12 +147,10 @@ def test_model(model, vis=False, save=True):
     return tiou/len(val_seqs)
 
 if __name__ == '__main__':
-    #model = deeplab_resnet.Res_Deeplab_4chan(2)
-    model = deeplab_resnet.Res_Deeplab_4chan(2)
-    #model = deeplab_resnet.Deep_EncoderDecoder(2)
+    model = deeplab_resnet_pair.Res_Deeplab_4chan(2)
     #state_dict = torch.load('data/snapshots/DAVIS16-20000.pth')
-    state_dict = torch.load('../data/snapshots/box-24000.pth')
-    model.load_state_dict(state_dict)
+    #state_dict = torch.load(SAVED_DICT_PATH)
+    #model.load_state_dict(state_dict)
     model = model.cuda()
     model.eval()
     res = test_model(model, vis=True)

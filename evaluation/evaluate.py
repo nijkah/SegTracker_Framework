@@ -25,28 +25,6 @@ im_path = os.path.join(davis_path, 'JPEGImages/480p')
 gt_path = os.path.join(davis_path, 'Annotations/480p')
 
 
-docstr = """Evaluate ResNet-DeepLab trained on scenes (VOC 2012),a total of 21 labels including background
-
-Usage: 
-    evalpyt.py [options]
-
-Options:
-    -h, --help                  Print this message
-    --visualize                 view outputs of each sketch
-    --snapPrefix=<str>          Snapshot [default: VOC12_scenes_]
-    --testGTpath=<str>          Ground truth path prefix [default: data/gt/]
-    --testIMpath=<str>          Sketch images path prefix [default: data/img/]
-    --NoLabels=<int>            The number of different labels in training data, VOC has 21 labels, including background [default: 21]
-    --gpu0=<int>                GPU number [default: 0]
-"""
-
-args = docopt(docstr, version='v0.1')
-#print args
-gpu0 = 0
-
-max_label = int(args['--NoLabels'])-1 # labels from 0,1, ... 20(for VOC) 
-
-
 def test_model(model, vis=False, save=True):
     dim = 328
     model.eval()

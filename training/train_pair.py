@@ -1,11 +1,3 @@
-import cv2
-from PIL import Image
-import numpy as np
-
-import matplotlib.pyplot as plt
-import random
-from docopt import docopt
-import timeit
 
 import torch
 import torch.nn as nn
@@ -14,25 +6,26 @@ import torch.optim as optim
 
 import sys
 import os
+import argparse
+import timeit
 sys.path.append('..')
 
 from models import deeplab_resnet_pair
 from dataloader.datasets_pair import DAVIS2016, YTB_VOS, ECSSD_dreaming, MSRA10K_dreaming
 from tools.loss import cross_entropy_loss_weighted, cross_entropy_loss
-from evaluation.test_pair import test_model
-from tools.utils import vis_2
+from evaluation.evaluate_pair import test_model
+from tools.utils import *
 
-DATASET_PATH = '/data/hakjin-workspace'
+DATASET_PATH = '/home/hakjine/datasets'
 DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2016/DAVIS')
 VOS_PATH = os.path.join(DATASET_PATH, 'Youtube-VOS/')
 #ECSSD_path = '../data/ECSSD'
 #MSRA10K_path = '../data/MSRA10K'
 ECSSD_PATH = os.path.join(DATASET_PATH, 'ECSSD/')
 MSRA10K_PATH = os.path.join(DATASET_PATH, 'MSRA10K/')
-SAVED_DICT_PATH = os.path.join(DATASET_PATH, 'MS_DeepLab_resnet_trained_VOC')
+SAVED_DICT_PATH = os.path.join(DATASET_PATH, 'MS_DeepLab_resnet_trained_VOC.pth')
 
-
-def main():
+def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     max_iter = args.maxIter
     batch_size = args.batchSize
@@ -41,7 +34,7 @@ def main():
 
     start = timeit.timeit()
 
-    model = deeplab_resnet_pair.Res_Deeplab_4chan(num_labels)
+    model = deeplab_resnet_pair.Res_Deeplab_4chan(2)
     saved_state_dict = torch.load(SAVED_DICT_PATH)
 
     for i in saved_state_dict:
@@ -67,7 +60,7 @@ def main():
     db_davis_train = DAVIS2016(train=True,root=DAVIS_PATH, aug=True)
     db_ytb_train = YTB_VOS(train=True, root=VOS_PATH, aug=True)
     db_ECSSD = ECSSD_dreaming(root=ECSSD_PATH, aug=True)
-    db_MSRA10K = MSRA10K_dreaming(root=MSRA10K_PATh, aug=True)
+    db_MSRA10K = MSRA10K_dreaming(root=MSRA10K_PATH, aug=True)
     db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
 
     train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)

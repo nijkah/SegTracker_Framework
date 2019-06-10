@@ -5,6 +5,55 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict
 import cv2
 
+def lr_poly(base_lr, iter,max_iter,power):
+    return base_lr*((1-float(iter)/max_iter)**(power))
+
+def get_1x_lr_params_NOscale(model):
+    """
+    This generator returns all the parameters of the net except for 
+    the last classification layer. Note that for each batchnorm layer, 
+    requires_grad is set to False in deeplab_resnet.py, therefore this function does not return 
+    any batchnorm parameter
+    """
+    b = []
+
+    b.append(model.Scale.conv1)
+    b.append(model.Scale.bn1)
+    b.append(model.Scale.layer1)
+    b.append(model.Scale.layer2)
+    b.append(model.Scale.layer3)
+    b.append(model.Scale.layer4)
+
+    
+    for i in range(len(b)):
+        for j in b[i].modules():
+            jj = 0
+            for k in j.parameters():
+                jj+=1
+                if k.requires_grad:
+                    yield k
+
+def get_10x_lr_params(model):
+    """
+    This generator returns all the parameters for the last layer of the net,
+    which does the classification of pixel into classes
+    """
+
+    b = []
+    #b.append(model.Scale.layer5.parameters())
+    b.append(model.aspp.parameters())
+    b.append(model.conv_1x1.parameters())
+    b.append(model.branch.parameters())
+    b.append(model.fuse.parameters())
+    b.append(model.fuse2.parameters())
+    b.append(model.refine.parameters())
+    b.append(model.predict.parameters())
+
+    for j in range(len(b)):
+        for i in b[j]:
+            yield i
+
+
 def overlay(img, mask, color=[255, 0, 0], transparency=0.6):
     gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     im_over = np.zeros(img.shape)
@@ -131,8 +180,8 @@ def compute_direct_coordinate(bb, context_large=False):
 
     direct_x = bb[0]-context
     direct_y = bb[1]-context
-    direct_w = bb[2]+2*context
-    direct_h = bb[3]+2*context
+    direct_w = max(bb[2]+2*context, 1)
+    direct_h = max(bb[3]+2*context, 1)
 
     return direct_x, direct_y, direct_w, direct_h
 
