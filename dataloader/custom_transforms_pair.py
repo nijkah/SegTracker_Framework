@@ -103,10 +103,8 @@ def aug_pair(img_template, img_search, gt_template, gt_search):
     template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB).astype(float)/255.
     
     # Augment Search Image
-    #img_search_o = crop_and_padding(img_search, gt_search, (dim, dim)).astype('uint8')
-    #gt_search_o = crop_and_padding(gt_search, gt_search, (dim, dim)).astype('uint8')
-    img_search_o = img_search.copy()
-    gt_search_o = gt_search.copy()
+    img_search_o = crop_and_padding(img_search, gt_search, (dim, dim)).astype('uint8')
+    gt_search_o = crop_and_padding(gt_search, gt_search, (dim, dim)).astype('uint8')
 
     for i in range(10):
         seq_det = seq.to_deterministic()
@@ -123,8 +121,6 @@ def aug_pair(img_template, img_search, gt_template, gt_search):
         img_search = img_search_o
         gt_search = gt_search_o
 
-    img_search = cv2.resize(img_search, (dim, dim))
-    gt_search = cv2.resize(gt_search.astype('uint8'), (dim, dim), cv2.INTER_NEAREST)
         
     kernel = np.ones((int(scale*5), int(scale*5)), np.uint8)
     for i in range(10):
@@ -136,18 +132,15 @@ def aug_pair(img_template, img_search, gt_template, gt_search):
         mask = gt_search.copy()
  
     fc = np.zeros([dim, dim, 1])
-    fc = mask.copy()
     if flip_p <= 0.8:
         aug_p = random.uniform(0, 1)
         it = random.randint(1, 3)
 
         aug = np.expand_dims(cv2.dilate(mask, kernel, iterations=it), 2)
-        fc= aug
-        #fc[np.where(aug==1)] = 1
+        fc[np.where(aug==1)] = 1
     else:
-        fc = np.expand_dims(fc, 2)
-    fc = cv2.resize(fc, (dim, dim), cv2.INTER_NEAREST)
-    fc = np.expand_dims(fc, 2)
+        bb = cv2.boundingRect(mask.astype('uint8'))
+        fc[bb[1]:bb[1]+bb[3]+1, bb[0]:bb[0]+bb[2]+1, 0] = 1
 
     gt_search= np.expand_dims(gt_search, 2)
     gt = np.expand_dims(gt_search, 3)

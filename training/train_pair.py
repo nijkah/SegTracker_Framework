@@ -128,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument('--batchSize', '-b', type=int, default=5, help='Number of samples per batch')
     parser.add_argument('--wtDecay', type=float, default=0.0005, help='Weight decay during training')
     parser.add_argument('--gpu', type=int, default=0, help='GPU number')
-    parser.add_argument('--maxIter', type=int, default=20000, help='Maximum number of iterations')
+    parser.add_argument('--maxIter', type=int, default=40000, help='Maximum number of iterations')
 
     args = parser.parse_args()
 
