@@ -35,7 +35,7 @@ def main(args):
 
     start = timeit.timeit()
 
-    model = deeplab_resnet.Res_Deeplab_4chan(num_labels)
+    model = deeplab_resnet.Res_Deeplab_4chan(2)
     saved_state_dict = torch.load(SAVED_DICT_PATH)
     for i in saved_state_dict:
         i_parts = i.split('.')
@@ -65,7 +65,8 @@ def main(args):
 
     train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)
 
-    optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': base_lr }, {'params': get_10x_lr_params(model), 'lr': 10*base_lr} ], lr = base_lr, momentum = 0.9,weight_decay = weight_decay)
+    optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': base_lr }, {'params':
+            get_10x_lr_params(model, False), 'lr': 10*base_lr} ], lr = base_lr, momentum = 0.9,weight_decay = weight_decay)
     #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = base_lr, momentum = 0.9,weight_decay = weight_decay)
     optimizer.zero_grad()
 
@@ -100,7 +101,8 @@ def main(args):
             optimizer.step()
             lr_ = lr_poly(base_lr,iter,max_iter,0.9)
             print('(poly lr policy) learning rate',lr_)
-            optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params': get_10x_lr_params(model), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
+            optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params':
+                    get_10x_lr_params(model, False), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
             #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = lr_, momentum = 0.9,weight_decay = weight_decay)
             optimizer.zero_grad()
 

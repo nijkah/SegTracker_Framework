@@ -33,7 +33,7 @@ def get_1x_lr_params_NOscale(model):
                 if k.requires_grad:
                     yield k
 
-def get_10x_lr_params(model):
+def get_10x_lr_params(model, pair=True):
     """
     This generator returns all the parameters for the last layer of the net,
     which does the classification of pixel into classes
@@ -42,12 +42,13 @@ def get_10x_lr_params(model):
     b = []
     #b.append(model.Scale.layer5.parameters())
     b.append(model.aspp.parameters())
-    b.append(model.conv_1x1.parameters())
-    b.append(model.branch.parameters())
-    b.append(model.fuse.parameters())
-    b.append(model.fuse2.parameters())
-    b.append(model.refine.parameters())
-    b.append(model.predict.parameters())
+    if pair:
+        b.append(model.conv_1x1.parameters())
+        b.append(model.branch.parameters())
+        b.append(model.fuse.parameters())
+        b.append(model.fuse2.parameters())
+        b.append(model.refine.parameters())
+        b.append(model.predict.parameters())
 
     for j in range(len(b)):
         for i in b[j]:
@@ -146,7 +147,7 @@ def vis_2(img, mask,target, box,gt, out, analysis=True):
 
     gt_pred = np.zeros([shape[0], shape[1], 3])
     gt= gt.data.cpu().numpy().transpose(1, 2, 0)
-    gt= cv2.resize(gt, (164, 164), cv2.INTER_NEAREST)
+    gt= cv2.resize(gt, (shape[0], shape[1]), cv2.INTER_NEAREST)
     gt_pred[:,:,0] = gt.squeeze() * 255
     gt_pred[:,:,2] = out * 255
     #plt.subplot(2, 3, 6).set_title('GT-pred')
@@ -163,7 +164,7 @@ def vis_2(img, mask,target, box,gt, out, analysis=True):
     plt.imshow(out)
 
     mask_pred = np.zeros([shape[0], shape[1], 3])
-    fg = cv2.resize(fg, (164, 164), cv2.INTER_NEAREST)
+    fg = cv2.resize(fg, (shape[0],  shape[1]), cv2.INTER_NEAREST)
     mask_pred[:,:,0] = fg * 255
     mask_pred[:,:,2] = out * 255
     plt.subplot(2, 3, 3).set_title('Mask-pred')
@@ -177,10 +178,8 @@ def vis_2(img, mask,target, box,gt, out, analysis=True):
     plt.clf()
 
 
-def compute_direct_coordinate(bb, context_large=False):
-    context = (bb[2]+bb[3])//4
-    if context_large:
-        context *= 2
+def compute_direct_coordinate(bb, context_factor=3):
+    context = (bb[2]+bb[3])//context_factor
 
     direct_x = bb[0]-context
     direct_y = bb[1]-context
@@ -202,8 +201,7 @@ def compute_padding(direct_coordinate, wh):
 
     return pads
 
-
-def crop_and_padding(img, mask, wh, context_on=True):
+def crop_and_padding(img, mask, wh, context_on=True, context_factor=2):
     if len(mask.shape) == 2:
         mask = np.expand_dims(mask, 2)
     if len(img.shape) == 2:
@@ -213,12 +211,9 @@ def crop_and_padding(img, mask, wh, context_on=True):
     m_h, m_w, _ = mask.shape
     
     if context_on:
-        context_large = False
-        if w == 321:
-            context_large = True
 
         bb = cv2.boundingRect(mask)
-        direct_coordinate = compute_direct_coordinate(bb, context_large)
+        direct_coordinate = compute_direct_coordinate(bb, context_factor)
         pads = compute_padding(direct_coordinate, (m_w, m_h))
 
         dbb = [0, 0, 0, 0]
@@ -254,11 +249,11 @@ def crop_and_padding(img, mask, wh, context_on=True):
 
     return padded_img
 
-def restore_mask(mask, bb, shape):
+def restore_mask(mask, bb, shape, context_factor=2):
     o_h, o_w = shape[0], shape[1]
     m_h, m_w = mask.shape[0], mask.shape[1]
     
-    direct_coordinate = compute_direct_coordinate(bb, context_large=False)
+    direct_coordinate = compute_direct_coordinate(bb, context_factor)
     direct_x, direct_y, direct_w, direct_h = direct_coordinate
 
     cropped_left =  0 if direct_x < 0 else direct_x
@@ -277,7 +272,7 @@ def restore_mask(mask, bb, shape):
     #reresized_mask = cv2.resize(unpadded_mask.astype('uint8'), (direct_w, direct_h), cv2.INTER_NEAREST)
     reresized_mask = cv2.resize(unpadded_mask, (direct_w, direct_h))
 
-    context = (bb[2]+bb[3])//4
+    context = (bb[2]+bb[3])//context_factor
     restored_mask = np.zeros([shape[0], shape[1], 2])
     restored_mask[:, :, 0] = 1
     pads = compute_padding(direct_coordinate,(o_w,o_h))
