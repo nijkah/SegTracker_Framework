@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, ConcatDataset
@@ -16,14 +15,14 @@ from tools.loss import cross_entropy_loss_weighted, cross_entropy_loss
 from evaluation.evaluate_pair import test_model
 from tools.utils import *
 
-DATASET_PATH = '/home/hakjine/datasets'
-DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2016/DAVIS')
+DATASET_PATH = '/data/shared/'
+DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2016')
 VOS_PATH = os.path.join(DATASET_PATH, 'Youtube-VOS/')
 #ECSSD_path = '../data/ECSSD'
 #MSRA10K_path = '../data/MSRA10K'
 ECSSD_PATH = os.path.join(DATASET_PATH, 'ECSSD/')
 MSRA10K_PATH = os.path.join(DATASET_PATH, 'MSRA10K/')
-SAVED_DICT_PATH = os.path.join(DATASET_PATH, 'MS_DeepLab_resnet_trained_VOC.pth')
+SAVED_DICT_PATH = os.path.join('/data/hakjin-workspace', 'MS_DeepLab_resnet_trained_VOC.pth')
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)

@@ -6,53 +6,44 @@ from os.path import *
 import numpy as np
 
 from glob import glob
-from scipy.misc import imread, imresize, imsave
 import cv2
 from .custom_transforms_pair import aug_pair, aug_mask_nodeform
 from PIL import Image
-import matplotlib.pyplot as plt
-
-
 
 
 class DAVIS(data.Dataset):
-    def __init__(self, inference_size=[-1, -1], train=False, is_cropped = False, root = '', replicates = 1, aug=False):
+    def __init__(self, train=False, is_cropped = False, root = '', replicates = 1, aug=False):
         self.is_cropped = is_cropped
-        self.render_size = inference_size
         self.replicates = replicates
         self.aug = aug
 
-        image_root = join(root, 'JPEGImages/480p')
-        gt_root = join(root, 'Annotations/480p')
         if train:
-            seqs_file = 'train_seqs.txt'
+            seqs_file = 'train.txt'
         else:
-            seqs_file = 'val_seqs.txt'
-        seq_list = sorted(np.loadtxt(join(root, seqs_file), dtype=str).tolist())
-        #seq_list = sorted(os.listdir(image_root))
+            seqs_file = 'val.txt'
+
+        with open(join(root, 'ImageSets/480p', seqs_file)) as f:
+            files = f.readlines()
 
         self.image_list = []
         self.gt_list = []
         self.seq_id_list = []
-        for seq in seq_list:
-            files = sorted(os.listdir(join(image_root, seq)))
-            for i in range(len(files)):
-                img = join(image_root, seq, files[i])
-                gt = join(gt_root, seq, files[i][:-4]+'.png')
-                gt_im = imread(gt, mode='P')
-                if len(np.unique(gt_im)) == 1:
-                    continue
-                self.image_list += [img]
-                self.gt_list += [gt]
-                self.seq_id_list += [seq]
+        for f in files:
+            im, gt = f.split()
+            seq = im.split('/')[-2]
+            img = join(root, im[1:])
+            gt = join(root, gt[1:])
+            self.image_list += [img]
+            self.gt_list += [gt]
+            gt_im = imread(gt, mode='P')
+            if len(np.unique(gt_im)) == 1:
+                continue
+            self.image_list += [img]
+            self.gt_list += [gt]
+            self.seq_id_list += [seq]
 
         self.size = len(self.image_list)
         self.frame_size = cv2.imread(self.image_list[0]).shape
-
-        if (self.render_size[0] < 0) or (self.render_size[1] < 0) or (self.frame_size[0]%64) or (self.frame_size[1]%64):
-            self.render_size[0] = ( (self.frame_size[0])//64 ) * 64
-            self.render_size[1] = ( (self.frame_size[1])//64 ) * 64
-
        
         assert (len(self.image_list) == len(self.gt_list))
 
@@ -71,9 +62,9 @@ class DAVIS(data.Dataset):
         img_template = cv2.imread(self.image_list[index])
         img_search = cv2.imread(self.image_list[search_index])
 
-        gt_template = np.expand_dims(imread(self.gt_list[index], mode='P'), axis=3)
-        gt_search= np.expand_dims(imread(self.gt_list[search_index], mode='P'), axis=3)
-        mask = np.expand_dims(imread(self.gt_list[mask_index], mode='P'), axis=3)
+        gt_template = np.expand_dims(np.array(Image.open(self.gt_list[index])), axis=3)
+        gt_search= np.expand_dims(np.array(Image.open(self.gt_list[search_index])), axis=3)
+        mask = np.expand_dims(np.array(Image.open(self.gt_list[mask_index])), axis=3)
         gt_template[gt_template==255] = 1
         gt_search[gt_search==255] = 1
         mask[mask==255] = 1
@@ -102,13 +93,12 @@ class DAVIS(data.Dataset):
         return self.size * self.replicates
 
 class DAVIS2016(DAVIS):
-    def __init__(self, inference_size=[-1, -1], train=False, is_cropped = False, root = '', replicates = 1, aug=False):
-        super(DAVIS2016, self).__init__(inference_size=inference_size, train=train, is_cropped = is_cropped, root = root, replicates = replicates, aug=aug)
+    def __init__(self, train=False, is_cropped = False, root = '', replicates = 1, aug=False):
+        super(DAVIS2016, self).__init__(train=train, is_cropped = is_cropped, root = root, replicates = replicates, aug=aug)
 
 class YTB_VOS(data.Dataset):
-    def __init__(self, inference_size=[-1, -1], train=False, is_cropped = False, root = '', replicates = 1, aug=False):
+    def __init__(self, train=False, is_cropped = False, root = '', replicates = 1, aug=False):
         self.is_cropped = is_cropped
-        self.render_size = inference_size
         self.replicates = replicates
         self.aug = aug
 
@@ -136,11 +126,6 @@ class YTB_VOS(data.Dataset):
         self.size = len(self.image_list)
         self.frame_size = cv2.imread(self.image_list[0]).shape
 
-        if (self.render_size[0] < 0) or (self.render_size[1] < 0) or (self.frame_size[0]%64) or (self.frame_size[1]%64):
-            self.render_size[0] = ( (self.frame_size[0])//64 ) * 64
-            self.render_size[1] = ( (self.frame_size[1])//64 ) * 64
-
-       
         assert (len(self.image_list) == len(self.gt_list))
 
     def __getitem__(self, index):
@@ -225,9 +210,8 @@ class YTB_VOS(data.Dataset):
         return self.size * self.replicates
 
 class ECSSD_dreaming(data.Dataset):
-    def __init__(self, inference_size=[-1, -1], is_cropped = False, root = '', replicates = 1, aug=False):
+    def __init__(self, is_cropped = False, root = '', replicates = 1, aug=False):
         self.is_cropped = is_cropped
-        self.render_size = inference_size
         self.replicates = replicates
         self.aug = aug
 
@@ -262,9 +246,9 @@ class ECSSD_dreaming(data.Dataset):
         img_search = cv2.imread(self.image_list[index][1])
         
 
-        gt_template = np.expand_dims(imread(self.gt_list[index][0], mode='P'), axis=3)
-        gt_search = np.expand_dims(imread(self.gt_list[index][1], mode='P'), axis=3)
-        mask = np.expand_dims(imread(self.mask_list[index][0], mode='P'), axis=3)
+        gt_template = np.expand_dims(np.array(Image.open(self.gt_list[index][0])), axis=3)
+        gt_search = np.expand_dims(np.array(Image.open(self.gt_list[index][1])), axis=3)
+        mask = np.expand_dims(np.array(Image.open(self.mask_list[index][0])), axis=3)
 
         gt_template[gt_template==255] = 1
         gt_search[gt_search==255] = 1
@@ -296,9 +280,8 @@ class ECSSD_dreaming(data.Dataset):
         return self.size * self.replicates
 
 class MSRA10K_dreaming(data.Dataset):
-    def __init__(self, inference_size=[-1, -1], is_cropped = False, root = '', replicates = 1, aug=False):
+    def __init__(self, is_cropped = False, root = '', replicates = 1, aug=False):
         self.is_cropped = is_cropped
-        self.render_size = inference_size
         self.replicates = replicates
         self.aug = aug
 
@@ -334,9 +317,9 @@ class MSRA10K_dreaming(data.Dataset):
         img_search = cv2.imread(self.image_list[index][1])
         
 
-        gt_template = np.expand_dims(imread(self.gt_list[index][0], mode='P'), axis=3)
-        gt_search = np.expand_dims(imread(self.gt_list[index][1], mode='P'), axis=3)
-        mask = np.expand_dims(imread(self.mask_list[index][0], mode='P'), axis=3)
+        gt_template = np.expand_dims(np.array(Image.open(self.gt_list[index][0])), axis=3)
+        gt_search = np.expand_dims(np.array(Image.open(self.gt_list[index][1])), axis=3)
+        mask = np.expand_dims(np.array(Image.open(self.mask_list[index][0])), axis=3)
 
         gt_template[gt_template==255] = 1
         gt_search[gt_search==255] = 1

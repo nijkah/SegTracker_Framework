@@ -3,10 +3,8 @@ import torch.utils.data as data
 import torch.nn as nn
 
 import os, math, random
-from os.path import *
 
 import cv2
-from scipy.misc import imread, imresize, imsave
 import imgaug as ia
 from imgaug import augmenters as iaa
 

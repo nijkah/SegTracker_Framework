@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from models import deeplab_resnet 
+from models import deeplab
 from collections import OrderedDict
 import os
 import matplotlib.pyplot as plt
@@ -20,15 +20,18 @@ from tools.utils import *
 import json
 from collections import OrderedDict
 
-davis_path = '/data/hakjin-workspace/DAVIS/DAVIS-2016/DAVIS'
-im_path = os.path.join(davis_path, 'JPEGImages/480p')
-gt_path = os.path.join(davis_path, 'Annotations/480p')
+DAVIS_PATH = '/data/shared/DAVIS/DAVIS-2016/'
+im_path = os.path.join(DAVIS_PATH, 'JPEGImages/480p')
+gt_path = os.path.join(DAVIS_PATH, 'Annotations/480p')
 
 
 def test_model(model, vis=False, save=True):
     dim = 328
     model.eval()
-    val_seqs = np.loadtxt(os.path.join(davis_path, 'val_seqs.txt'), dtype=str).tolist()
+    with open(os.path.join(DAVIS_PATH, 'ImageSets/480p', 'val.txt')):
+        files = f.readlines()
+    val_seqs = sorted(list(set([i.split('/')[3] for i in files])))
+    
     dumps = OrderedDict()
     #val_seqs = np.loadtxt(os.path.join(davis_path, 'train_seqs.txt'), dtype=str).tolist()
 
