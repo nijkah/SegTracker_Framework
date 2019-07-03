@@ -22,7 +22,7 @@ class DAVIS(data.Dataset):
         else:
             seqs_file = 'val.txt'
 
-        with open(join(root, 'ImageSets/480p', seqs_file)) as f:
+        with open(join(root, 'ImageSets/2017', seqs_file)) as f:
             files = f.readlines()
 
         self.image_list = []
@@ -35,7 +35,7 @@ class DAVIS(data.Dataset):
             gt = join(root, gt[1:])
             self.image_list += [img]
             self.gt_list += [gt]
-            gt_im = imread(gt, mode='P')
+            gt_im = np.array(Image.open(gt))
             if len(np.unique(gt_im)) == 1:
                 continue
             self.image_list += [img]
@@ -95,6 +95,122 @@ class DAVIS(data.Dataset):
 class DAVIS2016(DAVIS):
     def __init__(self, train=False, is_cropped = False, root = '', replicates = 1, aug=False):
         super(DAVIS2016, self).__init__(train=train, is_cropped = is_cropped, root = root, replicates = replicates, aug=aug)
+
+class DAVIS2017(data.Dataset):
+    def __init__(self, train=False, is_cropped = False, root = '', replicates = 1, aug=False):
+        self.is_cropped = is_cropped
+        self.replicates = replicates
+        self.aug = aug
+
+        if train:
+            seqs_file = 'train.txt'
+        else:
+            seqs_file = 'val.txt'
+
+        seq_list = sorted(np.loadtxt(join(root, 'ImageSets/2017', seqs_file), dtype=str).tolist())
+
+        image_root = os.path.join(root, 'JPEGImages/480p')
+        gt_root = os.path.join(root, 'Annotations/480p')
+
+        self.image_list = []
+        self.gt_list = []
+        self.seq_id_list = []
+        for seq in seq_list:
+            files = sorted(os.listdir(join(image_root, seq)))
+            for i in range(len(files)):
+                img = join(image_root, seq, files[i])
+                gt = join(gt_root, seq, files[i][:-4]+'.png')
+                self.image_list += [img]
+                self.gt_list += [gt]
+                self.seq_id_list += [seq]
+
+        self.size = len(self.image_list)
+        self.frame_size = cv2.imread(self.image_list[0]).shape
+       
+        assert (len(self.image_list) == len(self.gt_list))
+
+    def __getitem__(self, index):
+
+        flag = True 
+
+        index = index % self.size
+        seq = self.seq_id_list[index]
+        index_list = [i for i, x in enumerate(self.seq_id_list) if x == seq]
+        index_list.remove(index)
+
+        while flag:
+            if len(index_list) == 0:
+                index = random.choice(list(range(self.size)))
+                seq = self.seq_id_list[index]
+                index_list = [i for i, x in enumerate(self.seq_id_list) if x == seq]
+                index_list.remove(index)
+
+            gt_template_o = np.expand_dims(np.array(Image.open(self.gt_list[index])), axis=3)
+            if len(np.unique(gt_template_o)) == 1:
+                index = random.choice(index_list)
+                index_list.remove(index)
+                continue
+
+            search_center = random.choice(index_list)
+            i_index = index_list.index(search_center)
+            index_list.remove(search_center)
+            candidates = index_list[i_index-2:i_index] + index_list[i_index+1:i_index+3]
+
+            while len(candidates) > 0:
+                search_index = random.choice(candidates)
+
+                gt_search_o = np.expand_dims(np.array(Image.open(self.gt_list[search_index])), axis=3)
+                if len(np.unique(gt_search_o)) == 1:
+                    candidates.remove(search_index)
+                    continue
+
+                labels_template = np.unique(gt_template_o).tolist()
+                labels_search = np.unique(gt_search_o).tolist()
+                labels = list(set(labels_template).intersection(set(labels_search)))
+                if 0 in labels:
+                    labels.remove(0)
+                while len(labels) > 0:
+                    idx = random.choice(labels)
+                    gt_template = gt_template_o.copy()
+                    gt_search = gt_search_o.copy()
+                    gt_template[gt_template!=idx] = 0
+                    gt_search[gt_search!=idx] = 0
+                    gt_template[gt_template==idx] = 1
+                    gt_search[gt_search==idx] = 1
+                    bb_template = cv2.boundingRect(gt_template.squeeze())
+                    bb_search = cv2.boundingRect(gt_search.squeeze())
+                    if bb_search[2] < 30 or bb_search[3] < 30 or bb_template[2] < 30 or bb_template[3] < 30:
+                        labels.remove(idx)
+                        continue
+                    img_template  = cv2.imread(self.image_list[index])
+                    img_search = cv2.imread(self.image_list[search_index])
+                    flag = False
+                    break
+                candidates.remove(search_index)
+
+
+        if self.aug:
+            img, mask, target, box, gt = aug_pair(img_template, img_search, gt_template, gt_search)
+            #img, target, gt = aug_mask(img_template, img_search, gt_template, gt_search, mask)
+
+        img = img.transpose(2, 0, 1)
+        mask = mask.transpose(2, 0, 1)
+        target = target.transpose(2, 0, 1)
+        box = box.transpose(2, 0, 1)
+        gt = gt.transpose(2, 0, 1)
+
+        img = torch.from_numpy(img.astype(np.float32))
+        mask = torch.from_numpy(mask.astype(np.float32))
+        target = torch.from_numpy(target.astype(np.float32))
+        box = torch.from_numpy(box.astype(np.float32))
+        gt = torch.from_numpy(gt.astype(np.float32))
+
+
+        return img, mask, target, box, gt
+
+    
+    def __len__(self):
+        return self.size * self.replicates
 
 class YTB_VOS(data.Dataset):
     def __init__(self, train=False, is_cropped = False, root = '', replicates = 1, aug=False):

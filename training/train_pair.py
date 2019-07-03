@@ -9,20 +9,20 @@ import argparse
 import timeit
 sys.path.append('..')
 
-from models import deeplab_resnet_pair
-from dataloader.datasets_pair import DAVIS2016, YTB_VOS, ECSSD_dreaming, MSRA10K_dreaming
+from models import siam_deeplab 
+from dataloader.datasets_pair import DAVIS2017, YTB_VOS, ECSSD_dreaming, MSRA10K_dreaming
 from tools.loss import cross_entropy_loss_weighted, cross_entropy_loss
 from evaluation.evaluate_pair import test_model
 from tools.utils import *
 
-DATASET_PATH = '/data/shared/'
-DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2016')
+DATASET_PATH = '/home/hakjine/datasets'
+DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2017/DAVIS-trainval')
 VOS_PATH = os.path.join(DATASET_PATH, 'Youtube-VOS/')
 #ECSSD_path = '../data/ECSSD'
 #MSRA10K_path = '../data/MSRA10K'
 ECSSD_PATH = os.path.join(DATASET_PATH, 'ECSSD/')
 MSRA10K_PATH = os.path.join(DATASET_PATH, 'MSRA10K/')
-SAVED_DICT_PATH = os.path.join('/data/hakjin-workspace', 'MS_DeepLab_resnet_trained_VOC.pth')
+SAVED_DICT_PATH = os.path.join(DATASET_PATH, 'MS_DeepLab_resnet_trained_VOC.pth')
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -33,7 +33,7 @@ def main(args):
 
     start = timeit.timeit()
 
-    model = deeplab_resnet_pair.Res_Deeplab_4chan(2)
+    model = siam_deeplab.build_siam_Deeplab(2)
     saved_state_dict = torch.load(SAVED_DICT_PATH)
 
     for i in saved_state_dict:
@@ -56,7 +56,7 @@ def main(args):
     model.cuda()
 
 
-    db_davis_train = DAVIS2016(train=True,root=DAVIS_PATH, aug=True)
+    db_davis_train = DAVIS2017(train=True,root=DAVIS_PATH, aug=True)
     db_ytb_train = YTB_VOS(train=True, root=VOS_PATH, aug=True)
     db_ECSSD = ECSSD_dreaming(root=ECSSD_PATH, aug=True)
     db_MSRA10K = MSRA10K_dreaming(root=MSRA10K_PATH, aug=True)
@@ -64,7 +64,7 @@ def main(args):
 
     train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)
 
-    optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': base_lr }, {'params': get_10x_lr_params(model), 'lr': 10*base_lr} ], lr = base_lr, momentum = 0.9,weight_decay = weight_decay)
+    optimizer = optim.SGD([{'params': model.get_1x_lr_params_NOscale(), 'lr': base_lr }, {'params': model.get_10x_lr_params(), 'lr': 10*base_lr} ], lr = base_lr, momentum = 0.9,weight_decay = weight_decay)
     #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = base_lr, momentum = 0.9,weight_decay = weight_decay)
     optimizer.zero_grad()
 
@@ -98,7 +98,7 @@ def main(args):
             optimizer.step()
             lr_ = lr_poly(base_lr,iter,max_iter,0.9)
             print('(poly lr policy) learning rate',lr_)
-            optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params': get_10x_lr_params(model), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
+            optimizer = optim.SGD([{'params': model.get_1x_lr_params_NOscale(), 'lr': lr_ }, {'params': model.get_10x_lr_params(), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9,weight_decay = weight_decay)
             #optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = lr_, momentum = 0.9,weight_decay = weight_decay)
             optimizer.zero_grad()
 

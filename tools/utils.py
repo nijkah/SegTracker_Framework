@@ -201,7 +201,7 @@ def compute_padding(direct_coordinate, wh):
 
     return pads
 
-def crop_and_padding(img, mask, wh, context_on=True, context_factor=2):
+def crop_and_padding(img, mask, wh, context_on=True, context_factor=3):
     if len(mask.shape) == 2:
         mask = np.expand_dims(mask, 2)
     if len(img.shape) == 2:
@@ -249,7 +249,7 @@ def crop_and_padding(img, mask, wh, context_on=True, context_factor=2):
 
     return padded_img
 
-def restore_mask(mask, bb, shape, context_factor=2):
+def restore_mask(mask, bb, shape, context_factor=3):
     o_h, o_w = shape[0], shape[1]
     m_h, m_w = mask.shape[0], mask.shape[1]
     

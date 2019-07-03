@@ -12,7 +12,7 @@ import sys
 import json
 sys.path.append('..')
 
-from models import deeplab_resnet_pair
+from models import siam_deeplab
 from tools.utils import *
 
 DAVIS_PATH= '/home/hakjine/datasets/DAVIS/DAVIS-2016/DAVIS'
@@ -82,7 +82,7 @@ def test_model(model, vis=False, save=True):
             #pred_c = scipy.misc.imresize(pred_c.astype('uint8').squeeze(), (321, 321))
             #print(output.shape)
             #pred_c = F.upsample(output, scale_factor=2).data.cpu().numpy()
-            pred_c = F.interpolate(output, size=(321,321), mode='bilinear').data.cpu().numpy()
+            pred_c = F.interpolate(output, size=(dim,dim), mode='bilinear', align_corners=True).data.cpu().numpy()
             pred_c = pred_c.squeeze(0).transpose(1,2,0)
             #pred_c = np.argmax(pred_c,axis = 2)
 
@@ -147,7 +147,7 @@ def test_model(model, vis=False, save=True):
     return tiou/len(val_seqs)
 
 if __name__ == '__main__':
-    model = deeplab_resnet_pair.Res_Deeplab_4chan(2)
+    model = siam_deeplab.build_siam_Deeplab(2)
     #state_dict = torch.load('data/snapshots/DAVIS16-20000.pth')
     #state_dict = torch.load(SAVED_DICT_PATH)
     #model.load_state_dict(state_dict)
