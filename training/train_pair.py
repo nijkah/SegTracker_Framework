@@ -10,19 +10,20 @@ import timeit
 sys.path.append('..')
 
 from models import siam_deeplab 
-from dataloader.datasets_pair import DAVIS2017, YTB_VOS, ECSSD_dreaming, MSRA10K_dreaming
+from dataloader.datasets_pair import DAVIS2017, YTB_VOS, ECSSD_dreaming, MSRA10K_dreaming, GyGO
 from tools.loss import cross_entropy_loss_weighted, cross_entropy_loss
 from evaluation.evaluate_pair import test_model
 from tools.utils import *
 
-DATASET_PATH = '/home/hakjine/datasets'
-DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2017/DAVIS-trainval')
+DATASET_PATH = '/data/shared/'
+DAVIS_PATH = os.path.join(DATASET_PATH, 'DAVIS/DAVIS-2017/')
 VOS_PATH = os.path.join(DATASET_PATH, 'Youtube-VOS/')
 #ECSSD_path = '../data/ECSSD'
 #MSRA10K_path = '../data/MSRA10K'
 ECSSD_PATH = os.path.join(DATASET_PATH, 'ECSSD/')
 MSRA10K_PATH = os.path.join(DATASET_PATH, 'MSRA10K/')
-SAVED_DICT_PATH = os.path.join(DATASET_PATH, 'MS_DeepLab_resnet_trained_VOC.pth')
+GYGO_PATH = os.path.join('/data/hakjin-workspace', 'GyGO-Dataset')
+SAVED_DICT_PATH = os.path.join('/data/hakjin-workspace', 'MS_DeepLab_resnet_trained_VOC.pth')
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -55,12 +56,13 @@ def main(args):
 
     model.cuda()
 
-
     db_davis_train = DAVIS2017(train=True,root=DAVIS_PATH, aug=True)
     db_ytb_train = YTB_VOS(train=True, root=VOS_PATH, aug=True)
-    db_ECSSD = ECSSD_dreaming(root=ECSSD_PATH, aug=True)
-    db_MSRA10K = MSRA10K_dreaming(root=MSRA10K_PATH, aug=True)
-    db_train = ConcatDataset([db_davis_train, db_ytb_train, db_ECSSD, db_MSRA10K])
+    #db_ECSSD = ECSSD_dreaming(root=ECSSD_PATH, aug=True)
+    #db_MSRA10K = MSRA10K_dreaming(root=MSRA10K_PATH, aug=True)
+    db_GyGO= GyGO(root=GYGO_PATH, aug=True)
+    #db_train = ConcatDataset([db_davis_train, db_ytb_train, db_GyGO, db_ECSSD, db_MSRA10K])
+    db_train = ConcatDataset([db_davis_train, db_ytb_train, db_GyGO])
 
     train_loader = DataLoader(db_train, batch_size=batch_size, shuffle=True)
 
@@ -92,8 +94,8 @@ def main(args):
                 print('iter = ',iter, 'of',max_iter,'completed, loss = ', (loss.data.cpu().numpy()))
 
         
-            if iter % 5 == 0:
-                vis_2(images[0], mask[0], target[0], box[0], label[0], out[0])
+            #if iter % 5 == 0:
+            #    vis_2(images[0], mask[0], target[0], box[0], label[0], out[0])
 
             optimizer.step()
             lr_ = lr_poly(base_lr,iter,max_iter,0.9)

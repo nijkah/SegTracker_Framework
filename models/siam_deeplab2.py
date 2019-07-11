@@ -6,25 +6,7 @@ import numpy as np
 
 from models.backbone import build_backbone
 from models.aspp import build_aspp
-
-
-class SEFA(nn.Module):
-    def __init__(self, inplanes, r=4):
-        super(SEFA, self).__init__()
-        self.inplanes = inplanes
-        self.fc1 = nn.Linear(2*inplanes, int(2*inplanes/r))
-        self.fc2 = nn.Linear(int(2*inplanes/r), 2*inplanes)
-
-    def forward(self, x1, x2):
-        x = torch.cat([x1, x2], dim=1)
-        x = x.mean(-1).mean(-1)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        x = F.softmax(x.view(-1, self.inplanes, 2), dim=2)
-        w1 = x[:,:,0].contiguous().view(-1, self.inplanes, 1, 1)
-        w2 = x[:,:,1].contiguous().view(-1, self.inplanes, 1, 1)
-        out = x1*w1 + x2*w2
-        return out
+from roi_utils import *
 
 class Siam_Deeplab(nn.Module):
     def __init__(self, NoLabels, pretrained=False):
@@ -52,13 +34,10 @@ class Siam_Deeplab(nn.Module):
             nn.Conv2d(1024, 512, kernel_size=3, padding=1),
             nn.BatchNorm2d(512),
             nn.ReLU(),
-            nn.Conv2d(512, 2048, kernel_size=3, padding=1),
-            nn.BatchNorm2d(2048),
+            nn.Conv2d(512, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
             nn.ReLU())
 
-        self.SEFA = SEFA(2048)
-
-        """
         self.fuse2 = nn.Sequential(
             nn.Conv2d(256+256, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
@@ -75,7 +54,6 @@ class Siam_Deeplab(nn.Module):
             nn.Conv2d(256, 256, kernel_size=1),
             nn.BatchNorm2d(256),
             nn.ReLU())
-        """
 
         #self.template_refine= nn.Sequential(
         #        #nn.Conv2d(48+256, 256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -115,17 +93,20 @@ class Siam_Deeplab(nn.Module):
                 nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(256),
                 nn.ReLU(),
-                nn.Dropout(0.1))
+                nn.Dropout(0.1),
+                nn.Conv2d(256, NoLabels, kernel_size=1))
 
+        """
         self.predict = nn.Sequential(
                 #nn.Conv2d(48+256, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.Conv2d(256+64, 128, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(128+64, 128, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
                 nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
                 nn.Conv2d(128, NoLabels, kernel_size=1))
+        """
 
         
 
@@ -150,8 +131,8 @@ class Siam_Deeplab(nn.Module):
         x = self.conv1_1(x)
         mask = F.interpolate(mask, size=x.shape[2:], mode='bilinear', align_corners=True)
         fg = x * mask
-        out  = x + fg
-        out = torch.cat([out, fg], 1)
+        bg  = x - fg
+        out = torch.cat([fg, bg], 1)
         out = self.fuse(out)
         #out = self.template_fuse(out) if is_ref else self.fuse(out)
 
@@ -170,11 +151,9 @@ class Siam_Deeplab(nn.Module):
 
         x = (x - self.mean) / self.std
         ll, low_level_feat, out_o = self.backbone(x)
-        out = self.fuse_mask(out_o, mask)
-        out = self.SEFA(out, template_feature)
-        out = self.aspp(out)
+        fused = self.fuse_mask(out_o, mask)
+        out_o = self.aspp(out_o)
 
-        """
         #out = out + fused_feature
         diff = torch.abs(fused - template_feature)
         fused = torch.cat([fused, diff], 1)
@@ -182,7 +161,6 @@ class Siam_Deeplab(nn.Module):
         out = torch.cat([out_o, fused], 1)
         out = self.fuse3(out)
         #branch_feature = self.branch(low_level_feat)
-        """
         
         #mask = F.interpolate(mask, size=branch_feature.shape[2:])
         #mask_feature = branch_feature * mask
@@ -195,9 +173,9 @@ class Siam_Deeplab(nn.Module):
         out = torch.cat([out, low_level_feat], 1)
         out = self.refine(out)
         out = F.interpolate(out, size=ll.shape[2:], mode='bilinear', align_corners=True)
-        out = torch.cat([out, ll], 1)
-        out = self.predict(out)
-
+        #out = torch.cat([out, ll], 1)
+        #out = self.predict(out)
+        #out = F.interpolate(out, size=(161, 161))
 
         return out
 
@@ -219,8 +197,7 @@ class Siam_Deeplab(nn.Module):
         b.append(self.conv1_1)
         b.append(self.branch)
         b.append(self.fuse)
-        b.append(self.SEFA)
-        #b.append(self.fuse2)
+        b.append(self.fuse2)
         #b.append(self.template_fuse)
         b.append(self.refine)
 
@@ -369,7 +346,17 @@ class SiamDeeplab_fuse(nn.Module):
         return template_feature
 
     def forward(self, x, mask, target, box):
+        # generate roi
+        oh, ow = tf.size()[2], tf.size()[3] # original size
+        fw_grid, bw_grid, theta = self.get_ROI_grid(tb, src_size=(oh, ow), dst_size=(256,256), scale=1.0)
+
         template_feature = self.set_template(target, box)
+
+        #  Sample target frame
+        tf_roi = F.grid_sample(tf, fw_grid)
+        tm_roi = F.grid_sample(torch.unsqueeze(tm, dim=1).float(), fw_grid)[:,0]
+        tx_roi = F.grid_sample(torch.unsqueeze(tx, dim=1).float(), fw_grid)[:,0]
+
 
         x = (x - self.mean) / self.std
         ll, low_level_feat, out,  = self.Scale(x)
@@ -394,6 +381,9 @@ class SiamDeeplab_fuse(nn.Module):
         out = torch.cat([out, ll], 1)
         out = self.predict(out)
         #out = F.interpolate(out, size=(161, 161))
+
+        # get final output via inverse warping
+        em = F.grid_sample(F.softmax(em_roi[0], dim=1), bw_grid)[:,1]
 
         return out
 

@@ -325,6 +325,86 @@ class YTB_VOS(data.Dataset):
     def __len__(self):
         return self.size * self.replicates
 
+class GyGO(data.Dataset):
+    def __init__(self, train=False, root = '', replicates = 1, aug=False):
+        self.replicates = replicates
+        self.aug = aug
+
+        if train:
+            seqs_file = 'trainval.txt'
+        else:
+            seqs_file = 'trainval.txt'
+
+        with open(join(root, 'ImageSets/', seqs_file)) as f:
+            seqs = f.readlines()
+
+        image_root = os.path.join(root, 'JPEGImages', '480p')
+        gt_root = os.path.join(root, 'Annotations', '480p')
+
+        self.image_list = []
+        self.gt_list = []
+        self.seq_id_list = []
+        for seq in seqs:
+            seq = seq.strip()
+            files = sorted(os.listdir(join(image_root, seq)))
+            for i in range(len(files)):
+                img = join(image_root, seq, files[i])
+                gt = join(gt_root, seq, files[i][:-4]+'.png')
+                self.image_list += [img]
+                self.gt_list += [gt]
+                self.seq_id_list += [seq]
+            
+        self.size = len(self.image_list)
+        self.frame_size = cv2.imread(self.image_list[0]).shape
+       
+        assert (len(self.image_list) == len(self.gt_list))
+
+    def __getitem__(self, index):
+
+        index = index % self.size
+        seq = self.seq_id_list[index]
+        index_list = [i for i, x in enumerate(self.seq_id_list) if x == seq]
+        index_list.remove(index)
+        search_index = random.choice(index_list)
+
+        i_index = index_list.index(search_index)
+        candidates = index_list[i_index-3:i_index] + index_list[i_index+1:i_index+4]
+        mask_index = random.choice(candidates)
+
+        img_template = cv2.imread(self.image_list[index])
+        img_search = cv2.imread(self.image_list[search_index])
+
+        gt_template = np.expand_dims(np.array(Image.open(self.gt_list[index]).convert('L')), axis=2)
+        gt_search= np.expand_dims(np.array(Image.open(self.gt_list[search_index]).convert('L')), axis=2)
+        gt_template[gt_template<128] = 0
+        gt_template[gt_template!=0] = 1
+        gt_search[gt_search<128] = 0
+        gt_search[gt_search!=0] = 1
+        
+        if self.aug:
+            img, mask, target, box, gt = aug_pair(img_template, img_search, gt_template, gt_search)
+            #img, target, gt = aug_mask(img_template, img_search, gt_template, gt_search, mask)
+            
+        # hwc
+
+        img = img.transpose(2, 0, 1)
+        mask = mask.transpose(2, 0, 1)
+        target = target.transpose(2, 0, 1)
+        box = box.transpose(2, 0, 1)
+        gt = gt.transpose(2, 0, 1)
+
+        img = torch.from_numpy(img.astype(np.float32))
+        mask = torch.from_numpy(mask.astype(np.float32))
+        target = torch.from_numpy(target.astype(np.float32))
+        box = torch.from_numpy(box.astype(np.float32))
+        gt = torch.from_numpy(gt.astype(np.float32))
+
+        return img, mask, target, box, gt
+
+    def __len__(self):
+        return self.size * self.replicates
+
+
 class ECSSD_dreaming(data.Dataset):
     def __init__(self, is_cropped = False, root = '', replicates = 1, aug=False):
         self.is_cropped = is_cropped
